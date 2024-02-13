@@ -116,30 +116,30 @@ plt.colorbar()
  
 # %% Data splitting
 
-def split1(S1, y, train_percentage):
-    # Shuffle the indices along the 4th dimension
-    num_samples = np.size(S1, 3)
-    indices = np.arange(num_samples)
-    np.random.shuffle(indices)
+# def split1(S1, y, train_percentage):
+#     # Shuffle the indices along the 4th dimension
+#     num_samples = np.size(S1, 3)
+#     indices = np.arange(num_samples)
+#     np.random.shuffle(indices)
 
-    # Shuffle both S1 and y using the shuffled indices
-    S1_shuffled = S1[:, :, :, indices]
-    y_shuffled = y[:, :, :, indices]
+#     # Shuffle both S1 and y using the shuffled indices
+#     S1_shuffled = S1[:, :, :, indices]
+#     y_shuffled = y[:, :, :, indices]
     
-    # Calculate the number of samples for training
-    num_train_samples = int(train_percentage * num_samples)
+#     # Calculate the number of samples for training
+#     num_train_samples = int(train_percentage * num_samples)
     
-    # Split the shuffled data into training and testing sets
-    train_S1 = S1_shuffled[:, :, :, :num_train_samples]
-    train_y = y_shuffled[:, :, :, :num_train_samples]
-    test_S1 = S1_shuffled[:, :, :, num_train_samples:]
-    test_y = y_shuffled[:, :, :, num_train_samples:]
+#     # Split the shuffled data into training and testing sets
+#     train_S1 = S1_shuffled[:, :, :, :num_train_samples]
+#     train_y = y_shuffled[:, :, :, :num_train_samples]
+#     test_S1 = S1_shuffled[:, :, :, num_train_samples:]
+#     test_y = y_shuffled[:, :, :, num_train_samples:]
 
-    return train_S1, train_y, test_S1, test_y
+#     return train_S1, train_y, test_S1, test_y
 
 
-train_S1, train_y, test_S1, test_y = split1(S1, y, 0.3)
-del S1,y
+# train_S1, train_y, test_S1, test_y = split1(S1, y, 0.3)
+# del S1,y
 
 # %% 
 
@@ -213,75 +213,40 @@ validation_dataset = (
 
 # %% Model loading
 
-def get_model(width=22, height=64, depth=156):
+def get_model(batch_size, width, height, depth):
     """Build a 3D convolutional neural network model."""
 
-    # inputs = keras.Input((width, height, depth, 1))
-    
-    # x = layers.Conv3D(filters=32, kernel_size=(3, 3, 3), activation="relu")(inputs)
-    # x = layers.MaxPool3D(pool_size=(2, 2, 2))(x)
-    # x = layers.BatchNormalization()(x)
-    
-    # x = layers.Conv3D(filters=64, kernel_size=(3, 3, 3), activation="relu")(x)
-    # x = layers.MaxPool3D(pool_size=(2, 2, 2))(x)
-    # x = layers.BatchNormalization()(x)
-    
-    # x = layers.Conv3D(filters=128, kernel_size=(3, 3, 3), activation="relu")(x)
-    # x = layers.MaxPool3D(pool_size=(2, 2, 2))(x)
-    # x = layers.BatchNormalization()(x)
-    
-    # x = layers.Conv3D(filters=256, kernel_size=(3, 3, 3), activation="relu")(x)
-    # x = layers.MaxPool3D(pool_size=(2, 2, 2))(x)
-    # x = layers.BatchNormalization()(x)
-    
-    # x = layers.GlobalAveragePooling3D()(x)
-    # x = layers.Dense(units=512, activation="relu")(x)
-    # x = layers.Dropout(0.3)(x)
-    
 
     # Define the input shape
-    input_shape = (None, 22, 64, 156, 1)
+    #input_shape = (None, width, height, depth, 1)]
+    #inputs = layers.Input(input_shape)
+    #inputs = keras.Input((width, height, depth, 1))
     
-    # Define the input layer
-    inputs = layers.Input(input_shape)
+    input_shape = (batch_size,width,height,depth,1)
+    input_shape = tf.random.normal(input_shape)
     
-    # Convolutional layers
-    x = layers.Conv3D(filters=32, kernel_size=(3, 3, 3), activation="relu")(inputs)
-    # Input shape: (22, 64, 156, 1), Output shape: (20, 62, 154, 32)
-    
+    x = layers.Conv3D(filters=32, kernel_size=(3, 3, 3), activation="relu",input_shape=input_shape[1:])(input_shape)
+    print(x.shape) # Input shape: (22, 64, 156, 1), Output shape: (20, 62, 154, 32)
     x = layers.MaxPool3D(pool_size=(2, 2, 2))(x)
-    # Input shape: (20, 62, 154, 32), Output shape: (10, 31, 77, 32)
-    
+    print(x.shape) # Input shape: (20, 62, 154, 32), Output shape: (10, 31, 77, 32)
     x = layers.BatchNormalization()(x)
-    
     x = layers.Conv3D(filters=64, kernel_size=(3, 3, 3), activation="relu")(x)
-    # Input shape: (10, 31, 77, 32), Output shape: (8, 29, 75, 64)
-    
+    print(x.shape) # Input shape: (10, 31, 77, 32), Output shape: (8, 29, 75, 64)
     x = layers.MaxPool3D(pool_size=(2, 2, 2))(x)
-    # Input shape: (8, 29, 75, 64), Output shape: (4, 14, 37, 64)
-    
+    print(x.shape) # Input shape: (8, 29, 75, 64), Output shape: (4, 14, 37, 64)
     x = layers.BatchNormalization()(x)
-    
     x = layers.Conv3D(filters=128, kernel_size=(3, 3, 3), activation="relu")(x)
-    # Input shape: (4, 14, 37, 64), Output shape: (2, 12, 35, 128)
-    
+    print(x.shape) # Input shape: (4, 14, 37, 64), Output shape: (2, 12, 35, 128)
     x = layers.BatchNormalization()(x)
-    
     x = layers.Conv3D(filters=256, kernel_size=(1, 1, 1), activation="relu")(x)
-    # Input shape: (2, 12, 35, 128), Output shape: (2, 12, 35, 256)
-    
-    # Remove the MaxPooling3D layer here
-    
+    print(x.shape) # Input shape: (2, 12, 35, 128), Output shape: (2, 12, 35, 256)
     x = layers.BatchNormalization()(x)
-    
     # Global average pooling layer
     x = layers.GlobalAveragePooling3D()(x)
-    # Input shape: (2, 12, 35, 256), Output shape: (256,)
-    
+    print(x.shape) # Input shape: (2, 12, 35, 256), Output shape: (256,)
     # Fully connected layers
     x = layers.Dense(units=512, activation="relu")(x)
-    # Input shape: (256,), Output shape: (512,)
-    
+    print(x.shape) # Input shape: (256,), Output shape: (512,)
     # Dropout layer
     x = layers.Dropout(0.3)(x)
     
@@ -290,12 +255,12 @@ def get_model(width=22, height=64, depth=156):
     # Input shape: (512,), Output shape: (3,)
 
     # Define the model.
-    model = keras.Model(inputs, outputs, name="3dcnn")
+    model = keras.Model(input_shape, outputs, name="3dcnn")
     return model
 
 
 # Build model.
-model = get_model(width=22, height=64, depth=156)
+model = get_model(batch_size = 1, width=22, height=64, depth=156)
 model.summary()
 
 
