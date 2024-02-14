@@ -105,9 +105,13 @@ def split(x, y, train_percentage):
 
     # Add an extra dimension of size 1 to each array
     train_x = np.expand_dims(train_x, axis=-1)
+    train_x = np.repeat(train_x, 3, axis=-1)  # Repeat along the new dimension to make size 3
     train_y = np.expand_dims(train_y, axis=-1)
+    train_y = np.repeat(train_y, 3, axis=-1)  # Repeat along the new dimension to make size 3
     test_x = np.expand_dims(test_x, axis=-1)
+    test_x = np.repeat(test_x, 3, axis=-1)  # Repeat along the new dimension to make size 3
     test_y = np.expand_dims(test_y, axis=-1)
+    test_y = np.repeat(test_y, 3, axis=-1)  # Repeat along the new dimension to make size 3
 
     return train_x, train_y, test_x, test_y
 
@@ -117,7 +121,7 @@ del img, y
 # %% Data Loader 
 # Dataloader is jarring asf so you need to have the sample dimension as the first, so i need to reshape it as follows:
 
-# Reshape train_S1 and train_y to have a shape of (n, 22, 64, 156,1)
+# Reshape train_S1 and train_y to have a shape of (n, 22, 64, 156,3)
 # Transpose train_S1 and train_y
 train_x = np.transpose(train_x, (2, 0, 1, 3))  # Move the sample dimension to the first dimension
 train_y = np.transpose(train_y, (2, 0, 1, 3))    # Adjust the dimensions as needed for labels
@@ -160,7 +164,7 @@ class CFG:
 LOSS = keras.losses.KLDivergence()
     
 model = keras_cv.models.ImageClassifier.from_preset(
-    CFG.preset, num_classes=CFG.num_classes,input_shape=(22,256,1)
+    CFG.preset, num_classes=CFG.num_classes,input_shape=(22,256,3)
 )
 
 # Compile the model  
@@ -170,7 +174,7 @@ model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-4),
 # Model Sumamry
 model.summary()
 
-# %% LR Schedule
+# LR Schedule
 def get_lr_callback(batch_size=3, mode='cos', epochs=50, plot=False):
     lr_start, lr_max, lr_min = 5e-5, 6e-6 * batch_size, 1e-5
     lr_ramp_ep, lr_sus_ep, lr_decay = 3, 0, 0.75

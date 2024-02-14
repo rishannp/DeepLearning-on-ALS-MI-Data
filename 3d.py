@@ -18,7 +18,8 @@ from tensorflow.keras import datasets, layers, models
 import keras 
 from keras import layers
 import keras_cv
-
+import math
+from sklearn.preprocessing import OneHotEncoder
  # %% Preparing images
 data_dir = os.getcwd()
 
@@ -73,12 +74,15 @@ def makespect(S1):
     r = img['R'][:,:,:,:]
     re = img['Re'][:,:,:,:]
 
-    yl = np.zeros([22,64,156,160])
-    yr = np.ones([22,64,156,160])
-    yre = np.ones([22,64,156,160])*3
+    yl = np.zeros([1,160])
+    yr = np.ones([1,160])
+    yre = np.ones([1,160])*2
 
     img = np.concatenate((l,r,re),3)
-    y = np.concatenate((yl,yr,yre),3)
+    y = np.concatenate((yl,yr,yre),1)
+    y = y.reshape(-1, 1)
+    encoder = OneHotEncoder(sparse=False)
+    y = encoder.fit_transform(y)
     return img,y
 
 # I have had to prepad the third dimension with zeros as not all classes or instances are the same time length. Therefore many images will show some no activity areas. 
@@ -116,34 +120,6 @@ plt.colorbar()
 # %% Data Augmentation
 
 
- 
-# %% Data splitting #1
-
-# def split1(S1, y, train_percentage):
-#     # Shuffle the indices along the 4th dimension
-#     num_samples = np.size(S1, 3)
-#     indices = np.arange(num_samples)
-#     np.random.shuffle(indices)
-
-#     # Shuffle both S1 and y using the shuffled indices
-#     S1_shuffled = S1[:, :, :, indices]
-#     y_shuffled = y[:, :, :, indices]
-    
-#     # Calculate the number of samples for training
-#     num_train_samples = int(train_percentage * num_samples)
-    
-#     # Split the shuffled data into training and testing sets
-#     train_S1 = S1_shuffled[:, :, :, :num_train_samples]
-#     train_y = y_shuffled[:, :, :, :num_train_samples]
-#     test_S1 = S1_shuffled[:, :, :, num_train_samples:]
-#     test_y = y_shuffled[:, :, :, num_train_samples:]
-
-#     return train_S1, train_y, test_S1, test_y
-
-
-# train_S1, train_y, test_S1, test_y = split1(S1, y, 0.3)
-# del S1,y
-
 # %% Data Splitting #2 (CURRENT)
 
 def split(S1, y, train_percentage):
@@ -154,22 +130,23 @@ def split(S1, y, train_percentage):
 
     # Shuffle both S1 and y using the shuffled indices
     S1_shuffled = S1[:, :, :, indices]
-    y_shuffled = y[:, :, :, indices]
+    y_shuffled = y[indices, :]
     
     # Calculate the number of samples for training
     num_train_samples = int(train_percentage * num_samples)
     
     # Split the shuffled data into training and testing sets
     train_S1 = S1_shuffled[:, :, :, :num_train_samples]
-    train_y = y_shuffled[:, :, :, :num_train_samples]
+    train_y = y_shuffled[:num_train_samples, :]
     test_S1 = S1_shuffled[:, :, :, num_train_samples:]
-    test_y = y_shuffled[:, :, :, num_train_samples:]
+    test_y = y_shuffled[num_train_samples:, :]
 
-    # Add an extra dimension of size 1 to each array
     train_S1 = np.expand_dims(train_S1, axis=-1)
-    train_y = np.expand_dims(train_y, axis=-1)
+    train_S1 = np.repeat(train_S1, 3, axis=-1)  # Repeat along the new dimension to make size 3
+
     test_S1 = np.expand_dims(test_S1, axis=-1)
-    test_y = np.expand_dims(test_y, axis=-1)
+    test_S1 = np.repeat(test_S1, 3, axis=-1)  # Repeat along the new dimension to make size 3
+
 
     return train_S1, train_y, test_S1, test_y
 
@@ -182,10 +159,10 @@ del S1, y
 # Reshape train_S1 and train_y to have a shape of (n, 22, 64, 156,1)
 # Transpose train_S1 and train_y
 train_S1 = np.transpose(train_S1, (3, 0, 1, 2,4))  # Move the sample dimension to the first dimension
-train_y = np.transpose(train_y, (3, 0, 1, 2,4))    # Adjust the dimensions as needed for labels
+#train_y = np.transpose(train_y, (3, 0, 1, 2,4))    # Adjust the dimensions as needed for labels
 # Transpose test_S1 and test_y (assuming you intended to transpose test_S1)
 test_S1 = np.transpose(test_S1, (3, 0, 1, 2,4))  # Move the sample dimension to the first dimension
-test_y = np.transpose(test_y, (3, 0, 1, 2,4))    # Adjust the dimensions as needed for labels
+#test_y = np.transpose(test_y, (3, 0, 1, 2,4))    # Adjust the dimensions as needed for labels
 
 
 train_loader = tf.data.Dataset.from_tensor_slices((train_S1, train_y))
@@ -203,108 +180,80 @@ validation_dataset = (
 
 # %% EfficientNetv2
 
-# # Construct an EfficientNetV2 from a preset:
-# efficientnet = keras_cv.models.EfficientNetV2Backbone.from_preset("efficientnetv2_s")
+class CFG:
+    verbose = 1  # Verbosity
+    seed = 42  # Random seed
+    preset = "efficientnetv2_b2_imagenet"  # Name of pretrained classifier
+    image_size = [22, 64, 156]  # Input image size
+    epochs = 100 # Training epochs
+    batch_size = 3  # Batch size
+    lr_mode = "cos" # LR scheduler mode from one of "cos", "step", "exp"
+    drop_remainder = True  # Drop incomplete batches
+    num_classes = 3 # Number of classes in the dataset
+    fold = 0 # Which fold to set as validation data
+    class_names = ['L', 'R', 'Re']
+    label2name = dict(enumerate(class_names))
+    name2label = {v:k for k, v in label2name.items()}
 
-# # Build Classifier
-# model = keras_cv.models.ImageClassifier.from_preset(
-#     CFG.preset, num_classes=CFG.num_classes
-# )
-
-# # Compile the model  
-# model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-4),
-#               loss=LOSS)
-
-# # Model Sumamry
-# model.summary()
-
-# for batch in train_dataset.take(1):
-#     # 'batch' will be a tuple containing input data and labels
-#     input_data, labels = batch
-
-#     # Print the shapes of input data and labels
-#     print("Input data shape:", input_data.shape)
-#     print("Labels shape:", labels.shape)
+#new_input = layers.Input(shape=(22, 256, 1),name='image_input')
+LOSS = keras.losses.KLDivergence()
     
+model = keras_cv.models.ImageClassifier.from_preset(
+    CFG.preset, num_classes=CFG.num_classes,input_shape=(22,64,156,3)
+)
 
-# %% Custom Model
+# Compile the model  
+model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-4),
+              loss=LOSS)
 
-def get_model(batch_size, width, height, depth):
-    """Build a 3D convolutional neural network model."""
-
-
-    # Define the input shape
-    #input_shape = (None, width, height, depth, 1)]
-    #inputs = layers.Input(input_shape)
-    #inputs = keras.Input((width, height, depth, 1))
-    
-    input_shape = (batch_size,width,height,depth,1)
-    input_shape = tf.random.normal(input_shape)
-    
-    x = layers.Conv3D(filters=32, kernel_size=(3, 3, 3), activation="relu",input_shape=input_shape[1:])(input_shape)
-    print(x.shape) # Input shape: (22, 64, 156, 1), Output shape: (20, 62, 154, 32)
-    x = layers.MaxPool3D(pool_size=(2, 2, 2))(x)
-    print(x.shape) # Input shape: (20, 62, 154, 32), Output shape: (10, 31, 77, 32)
-    x = layers.BatchNormalization()(x)
-    x = layers.Conv3D(filters=64, kernel_size=(3, 3, 3), activation="relu")(x)
-    print(x.shape) # Input shape: (10, 31, 77, 32), Output shape: (8, 29, 75, 64)
-    x = layers.MaxPool3D(pool_size=(2, 2, 2))(x)
-    print(x.shape) # Input shape: (8, 29, 75, 64), Output shape: (4, 14, 37, 64)
-    x = layers.BatchNormalization()(x)
-    x = layers.Conv3D(filters=128, kernel_size=(3, 3, 3), activation="relu")(x)
-    print(x.shape) # Input shape: (4, 14, 37, 64), Output shape: (2, 12, 35, 128)
-    x = layers.BatchNormalization()(x)
-    x = layers.Conv3D(filters=256, kernel_size=(1, 1, 1), activation="relu")(x)
-    print(x.shape) # Input shape: (2, 12, 35, 128), Output shape: (2, 12, 35, 256)
-    x = layers.BatchNormalization()(x)
-    # Global average pooling layer
-    x = layers.GlobalAveragePooling3D()(x)
-    print(x.shape) # Input shape: (2, 12, 35, 256), Output shape: (256,)
-    # Fully connected layers
-    x = layers.Dense(units=512, activation="relu")(x)
-    print(x.shape) # Input shape: (256,), Output shape: (512,)
-    # Dropout layer
-    x = layers.Dropout(0.3)(x)
-    
-    # Output layer
-    outputs = layers.Dense(units=3, activation="softmax")(x)
-    # Input shape: (512,), Output shape: (3,)
-
-    # Define the model.
-    model = keras.Model(input_shape, outputs, name="3dcnn")
-    return model
-
-
-# Build model.
-model = get_model(batch_size=2, width=22, height=64, depth=156)
+# Model Sumamry
 model.summary()
 
+# LR Schedule
+def get_lr_callback(batch_size=3, mode='cos', epochs=50, plot=False):
+    lr_start, lr_max, lr_min = 5e-5, 6e-6 * batch_size, 1e-5
+    lr_ramp_ep, lr_sus_ep, lr_decay = 3, 0, 0.75
 
-# Compile model.
-initial_learning_rate = 0.0001
-lr_schedule = keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate, decay_steps=100000, decay_rate=0.96, staircase=True
-)
-model.compile(
-    loss="categorical_crossentropy",
-    optimizer=keras.optimizers.Adam(learning_rate=lr_schedule),
-    metrics=["acc"],
-    run_eagerly=True,
+    def lrfn(epoch):  # Learning rate update function
+        if epoch < lr_ramp_ep: lr = (lr_max - lr_start) / lr_ramp_ep * epoch + lr_start
+        elif epoch < lr_ramp_ep + lr_sus_ep: lr = lr_max
+        elif mode == 'exp': lr = (lr_max - lr_min) * lr_decay**(epoch - lr_ramp_ep - lr_sus_ep) + lr_min
+        elif mode == 'step': lr = lr_max * lr_decay**((epoch - lr_ramp_ep - lr_sus_ep) // 2)
+        elif mode == 'cos':
+            decay_total_epochs, decay_epoch_index = epochs - lr_ramp_ep - lr_sus_ep + 3, epoch - lr_ramp_ep - lr_sus_ep
+            phase = math.pi * decay_epoch_index / decay_total_epochs
+            lr = (lr_max - lr_min) * 0.5 * (1 + math.cos(phase)) + lr_min
+        return lr
+
+    if plot:  # Plot lr curve if plot is True
+        plt.figure(figsize=(10, 5))
+        plt.plot(np.arange(epochs), [lrfn(epoch) for epoch in np.arange(epochs)], marker='o')
+        plt.xlabel('epoch'); plt.ylabel('lr')
+        plt.title('LR Scheduler')
+        plt.show()
+
+    return keras.callbacks.LearningRateScheduler(lrfn, verbose=False)  # Create lr callback
+
+lr_cb = get_lr_callback(CFG.batch_size, mode=CFG.lr_mode, plot=True)
+
+# Checkpoint to find best models
+ckpt_cb = keras.callbacks.ModelCheckpoint("best_model.keras",
+                                         monitor='val_loss',
+                                         save_best_only=True,
+                                         save_weights_only=False,
+                                         mode='min')
+# %% Training (takes a while with 100 epochs)
+
+history = model.fit(
+    train_dataset, 
+    epochs=CFG.epochs,
+    callbacks=[lr_cb, ckpt_cb], 
+    steps_per_epoch=len(train_dataset)//CFG.batch_size,
+    validation_data=validation_dataset, 
+    verbose=CFG.verbose
 )
 
-# Define callbacks.
-checkpoint_cb = keras.callbacks.ModelCheckpoint(
-    "3d_image_classification.keras", save_best_only=True
-)
-early_stopping_cb = keras.callbacks.EarlyStopping(monitor="val_acc", patience=15)
+# %% 
 
-# Train the model, doing validation at the end of each epoch
-epochs = 100
-model.fit(
-    train_dataset,
-    validation_data=validation_dataset,
-    epochs=epochs,
-    shuffle=True,
-    verbose=2,
-    callbacks=[checkpoint_cb, early_stopping_cb],
-)
+model.load_weights("best_model.keras") # Finds optimal model from training
+preds = model.predict(validation_dataset)
