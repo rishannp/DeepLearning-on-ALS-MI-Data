@@ -5,3 +5,18 @@ Novelty:
 1) Application of deep learning structures to end user datasets. This contributes to benchmarks for models on ALS data.
 2) Providing automatically adaptive models over time
 3) 
+
+Model To do list: 
+1) CNN (3D Complete, 2D incomplete, Also testing different inputs i.e. Raw vs Frequency vs Spatial)
+2) RNN - LSTM
+3) LSTM + CNN (Simultaneous processing of frequency and raw data)
+4) 
+
+
+EfficientNetV2 
+| Subject | Accuracies                                     |
+|    1     |  Left: 0.6625,Right: 0.633333, Rest: 0.970833 |
+
+
+
+
