@@ -7,10 +7,13 @@ Novelty:
 3) 
 
 Model To do list: 
-1) CNN (3D Complete, 2D incomplete, Also testing different inputs i.e. Raw vs Frequency vs Spatial)
-2) RNN - LSTM
-3) LSTM + CNN (Simultaneous processing of frequency and raw data)
-4) Using PLV as images for CNN and LSTM?
+1) 3D CNN Frequency - Complete
+2) 3D CNN Raw
+3) 3D CNN Spatial (CSP)
+4) 2D CNN
+5) RNN - LSTM
+6) LSTM + CNN (Simultaneous processing of frequency and raw data)
+7) Using PLV as images for CNN and LSTM?
 
 
 EfficientNetV2 
