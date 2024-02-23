@@ -7,16 +7,7 @@ Novelty:
 3) 
 
 Model To do list: 
-1) 3D CNN Frequency - Complete
-2) 3D CNN Raw
-3) 3D CNN Spatial (CSP)
-4) 2D CNN
-5) RNN - LSTM
-6) LSTM + CNN (Simultaneous processing of frequency and raw data)
-7) Using PLV as images for CNN and LSTM?
-
-
-EfficientNetV2 
+1) 3D EfficientNet Frequency
 | Subject | Accuracies (L/R/Re Respectively)              |
 |    1    | 0.6625 0.633333 0.970833                      |
 |    2    | [0.67054264 0.35271318 0.68217054]            |
@@ -26,6 +17,15 @@ EfficientNetV2
 |    6    | [0.58333333 0.6375     0.8875    ]            |
 |    7    | [0.62666667 0.34222222 0.        ]            |
 |    8    | [0.30666667 0.60888889 0.        ]            |
+
+2) 2D EfficientNet - Raw Data
+[0.64166667 0.60833333 0.925     ] S9 
+2) RNN - LSTM
+3) LSTM + CNN (Simultaneous processing of frequency and raw data)
+4) Using PLV as images for CNN and LSTM?
+
+
+
 
 
 
