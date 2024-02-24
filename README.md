@@ -8,7 +8,7 @@ Novelty:
 
 Model To do list: 
 # 1) 3D EfficientNet Frequency
-| Subject | Accuracies (L/R/Re Respectively)              |
+| Subject | Accuracies (L/R/Re Respectively)              |<br>
 |    1    | 0.6625 0.633333 0.970833                      |<br>
 |    2    | [0.67054264 0.35271318 0.68217054]            |<br>
 |    3    | 0.57563025 0.43277311 0.                      |<br>
