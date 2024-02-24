@@ -7,7 +7,7 @@ Novelty:
 3) 
 
 Model To do list: 
-1) 3D EfficientNet Frequency
+# 1) 3D EfficientNet Frequency
 | Subject | Accuracies (L/R/Re Respectively)              |
 |    1    | 0.6625 0.633333 0.970833                      |
 |    2    | [0.67054264 0.35271318 0.68217054]            |
@@ -18,18 +18,19 @@ Model To do list:
 |    7    | [0.62666667 0.34222222 0.        ]            |
 |    8    | [0.30666667 0.60888889 0.        ]            |
 
-2) 2D EfficientNet - Raw Data
-# 39 - [0.66222222 0.63111111 0.96      ]
-# 34 - [0.68444444 0.65333333 0.91555556]
-# 31 - [0.64583333 0.62083333 0.96666667]
-# 21 - [0.64583333 0.67083333 0.96666667]
-# 9 - [0.62605042 0.39915966 0.        ]
-# 5 - [0.61344538 0.31932773 0.        ]
-# 2 - [0.6744186  0.67054264 0.98062016]
-# 1 - [0.67083333 0.3125     0.        ]
-2) RNN - LSTM
-3) LSTM + CNN (Simultaneous processing of frequency and raw data)
-4) Using PLV as images for CNN and LSTM?
+# 2) 2D EfficientNet - Raw Data
+39 - [0.66222222 0.63111111 0.96      ]
+34 - [0.68444444 0.65333333 0.91555556]
+31 - [0.64583333 0.62083333 0.96666667]
+21 - [0.64583333 0.67083333 0.96666667]
+9 - [0.62605042 0.39915966 0.        ]
+5 - [0.61344538 0.31932773 0.        ]
+2 - [0.6744186  0.67054264 0.98062016]
+1 - [0.67083333 0.3125     0.        ]
+   
+# 3) RNN - LSTM
+# 4) LSTM + CNN (Simultaneous processing of frequency and raw data)
+# 5) Using PLV as images for CNN and LSTM?
 
 
 
