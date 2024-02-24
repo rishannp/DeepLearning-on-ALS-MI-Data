@@ -30,7 +30,7 @@ Model To do list:
    
 # 3) RNN - LSTM
 # 4) LSTM + CNN (Simultaneous processing of frequency and raw data)
-# 5) Using PLV as images for CNN and LSTM?
+# 5) Using PLV as images for CNN (Start with All Freq, then just Mu and Beta)
 # 6) Graph Neural Network
 
 
