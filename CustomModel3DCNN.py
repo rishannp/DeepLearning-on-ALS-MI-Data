@@ -2,7 +2,7 @@
 """
 Created on Sat Jan 27 18:26:26 2024
 Rishan Patel, UCL, Bioelectronics Group.
-2D CNN based on EfficientNetV2 using Raw images.
+3D Custom CNN using spectrogram images.
 """
 import os
 from os.path import dirname, join as pjoin
@@ -35,46 +35,52 @@ for subject_number in subject_numbers:
     subject_data[f'S{subject_number}'] = mat_contents[f'Subject{subject_number}']
 del subject_number,subject_numbers,mat_fname,mat_contents,data_dir
 
-# S1 = subject_data['S1'][:,:]
 
-batch_size = 1
-epoch = 10
+
 # %% Model
 
 def makemodel(S1,batch_size,epoch,train_p, val_p, test_p): 
-    
-    def makedata(S1):
+
+    def makespect(S1):
         # Find max size of all classes to allow proper preallocation
         idx = ['L', 'R', 'Re']
          
         dtype = [('L', np.float32), ('R', np.float32), ('Re', np.float32)]
         
-        msize = [0,0,0]
-        
-        for i in range(np.size(S1, 1) - 1):
-            for j, field in enumerate(idx):
-                if msize[j] < np.size(S1[field][0, i], 0):
-                    msize[j] = np.size(S1[field][0, i], 0)
-    
         # Create an empty structured array with the defined data type
-        img = np.zeros((22, np.max(msize), np.size(S1, 1)), dtype=dtype)  
+        img = np.zeros((22, 64, 156, np.size(S1, 1)), dtype=dtype)
         
         # S1 now has a full band of X examples for each class (L, R, Re)
+        # Create spectrogram for each channel
         for i in range(np.size(S1, 1)-1):
             for j, field in enumerate(idx):
                 x = np.transpose(S1[field][0, i])
-                img[field][:,:np.size(x,1),i] += x
+                
+                # RAW SPECTROGRAM
+                mel_spec = librosa.feature.melspectrogram(y=x, sr=256, hop_length=np.size(x, 1) // 64, 
+                                                          n_fft=256, n_mels=64, fmin=0, fmax=100, win_length=128)
+                
+                # LOG TRANSFORM
+                width = (mel_spec.shape[1] // 32) * 32
+                mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max).astype(np.float32)[:, :, :width]
+                
+                # STANDARDIZE TO -1 TO 1
+                mel_spec_db = (mel_spec_db + 40) / 40 
+                
+                size_of_mel_spec_db = np.size(mel_spec_db, 2)
+                #img[idx[j]][:,:,:,i] += mel_spec_db
+                img[field][:, :, :size_of_mel_spec_db,i] += mel_spec_db
                 
         
-        l = img['L'][:,:,:]
-        r = img['R'][:,:,:]
-        re = img['Re'][:,:,:]
+        l = img['L'][:,:,:,:]
+        r = img['R'][:,:,:,:]
+        re = img['Re'][:,:,:,:]
     
         yl = np.zeros([1,np.size(S1,1)])
         yr = np.ones([1,np.size(S1,1)])
         yre = np.ones([1,np.size(S1,1)])*2
     
-        img = np.concatenate((l,r,re),2)
+        img = np.concatenate((l,r,re),3)
         y = np.concatenate((yl,yr,yre),1)
         y = y.reshape(-1, 1)
         encoder = OneHotEncoder(sparse=False)
@@ -82,7 +88,14 @@ def makemodel(S1,batch_size,epoch,train_p, val_p, test_p):
         return img,y
     
     # I have had to prepad the third dimension with zeros as not all classes or instances are the same time length. Therefore many images will show some no activity areas. 
-    S1,y = makedata(S1)
+    S1,y = makespect(S1)
+    # S2 = makespect(subject_data['S2'])
+    # S5 = makespect(subject_data['S5'])
+    # S9 = makespect(subject_data['S9'])
+    # S21 = makespect(subject_data['S21'])
+    # S31 = makespect(subject_data['S31'])
+    # S34 = makespect(subject_data['S34'])
+    # S39 = makespect(subject_data['S39'])
     
     # Data Augmentation (To be added)
     
@@ -111,14 +124,6 @@ def makemodel(S1,batch_size,epoch,train_p, val_p, test_p):
         test_S1 = S1_shuffled[..., num_train_samples+num_val_samples:num_train_samples+num_val_samples+num_test_samples]
         test_y = y_shuffled[num_train_samples+num_val_samples:num_train_samples+num_val_samples+num_test_samples, :]
     
-        train_S1 = np.expand_dims(train_S1, axis=-1)
-        train_S1 = np.repeat(train_S1, 1, axis=-1)
-        val_S1 = np.expand_dims(val_S1, axis=-1)
-        val_S1 = np.repeat(val_S1, 1, axis=-1)
-        test_S1 = np.expand_dims(test_S1, axis=-1)
-        test_S1 = np.repeat(test_S1, 1, axis=-1)
-    
-    
         # Repeat and expand dimensions for S1 to make size 3
         train_S1 = np.expand_dims(train_S1, axis=-1)
         train_S1 = np.repeat(train_S1, 3, axis=-1)
@@ -135,10 +140,10 @@ def makemodel(S1,batch_size,epoch,train_p, val_p, test_p):
     # Data Loader 
     # Dataloader is jarring asf so you need to have the sample dimension as the first, so i need to reshape it as follows:
     
-    # Reshape train_S1 and train_y to have a shape of (n, 22, 2567, 240,3)
-    train_S1 = np.transpose(train_S1, (2,0,1,3,4))  # Move the sample dimension to the first dimension
-    val_S1 = np.transpose(val_S1, (2,0,1,3,4))
-    test_S1 = np.transpose(test_S1, (2,0,1,3,4))  # Move the sample dimension to the first dimension
+    # Reshape train_S1 and train_y to have a shape of (n, 22, 64, 156,3)
+    train_S1 = np.transpose(train_S1, (3, 0, 1, 2,4))  # Move the sample dimension to the first dimension
+    val_S1 = np.transpose(val_S1, (3, 0, 1, 2,4))
+    test_S1 = np.transpose(test_S1, (3, 0, 1, 2,4))  # Move the sample dimension to the first dimension
     
     train_loader = tf.data.Dataset.from_tensor_slices((train_S1, train_y))
     validation_loader = tf.data.Dataset.from_tensor_slices((val_S1, val_y))
@@ -162,7 +167,7 @@ def makemodel(S1,batch_size,epoch,train_p, val_p, test_p):
         verbose = 1  # Verbosity
         seed = 42  # Random seed
         preset = "efficientnetv2_b2_imagenet"  # Name of pretrained classifier
-        image_size = [22, 2567]  # Input image size
+        image_size = [22, 64, 156]  # Input image size
         epochs = 10 # Training epochs
         batch_size = 1  # Batch size
         lr_mode = "cos" # LR scheduler mode from one of "cos", "step", "exp"
@@ -177,7 +182,7 @@ def makemodel(S1,batch_size,epoch,train_p, val_p, test_p):
     LOSS = keras.losses.KLDivergence()
         
     model = keras_cv.models.ImageClassifier.from_preset(
-        CFG.preset, num_classes=CFG.num_classes,input_shape=(22,2567,3)
+        CFG.preset, num_classes=CFG.num_classes,input_shape=(22,64,156,3)
     )
     
     # Compile the model  
@@ -299,25 +304,16 @@ def makemodel(S1,batch_size,epoch,train_p, val_p, test_p):
     print("Accuracies for each class:")
     print(accuracies)
     
-    return model, accuracies
-    
+    return accuracies,model
+
 
 # accuracies, model = makemodel(subject_data['S2'][:,:],1,20,0.3,0.2,0.5)
 
-# %%  Define the subject numbers
-subject_numbers = [1, 2, 5, 9, 21, 31, 34, 39] # 1, 2, 5, 9, 21, 31, 34, 39
+# Define the subject numbers
+subject_numbers = [2] # 1, 2, 5, 9, 21, 31, 34, 39
 # Loop through each subject number
 for subject_number in subject_numbers:
     # Call the makemodel function to create the model
     model, accuracies = makemodel(subject_data[f'S{subject_number}'][:,:], 1, 10, 0.3, 0.2, 0.5)
     
-# 39 - [0.66222222 0.63111111 0.96      ]
-# 34 - [0.68444444 0.65333333 0.91555556]
-# 31 - [0.64583333 0.62083333 0.96666667]
-# 21 - [0.64583333 0.67083333 0.96666667]
-# 9 - [0.62605042 0.39915966 0.        ]
-# 5 - [0.61344538 0.31932773 0.        ]
-# 2 - [0.6744186  0.67054264 0.98062016]
-# 1 - [0.67083333 0.3125     0.        ]
-
     

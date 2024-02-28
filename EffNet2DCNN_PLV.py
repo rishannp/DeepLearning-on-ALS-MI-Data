@@ -2,7 +2,7 @@
 """
 Created on Sat Jan 27 18:26:26 2024
 Rishan Patel, UCL, Bioelectronics Group.
-2D CNN based on EfficientNetV2 using Raw images.
+2D CNN based on EfficientNetV2 using PLV images.
 """
 import os
 from os.path import dirname, join as pjoin
@@ -19,6 +19,8 @@ from keras import layers
 import keras_cv
 import math
 from sklearn.preprocessing import OneHotEncoder
+import numpy as np
+import scipy.signal as sig
  # %% Preparing Data
 data_dir = os.getcwd()
 
@@ -39,51 +41,89 @@ del subject_number,subject_numbers,mat_fname,mat_contents,data_dir
 
 batch_size = 1
 epoch = 10
+
+# %% 
+
+
+
+
+# def hilphase(y1,y2): # well behaved sig
+#     sig1_hill=sig.hilbert(y1)
+#     sig2_hill=sig.hilbert(y2)
+#     phase_y1=np.unwrap(np.angle(sig1_hill))
+#     phase_y2=np.unwrap(np.angle(sig2_hill))
+#     Inst_phase_diff=phase_y1-phase_y2
+#     avg_phase=np.average(Inst_phase_diff)
+    
+#     return Inst_phase_diff
+
+# def hilphase(y1,y2): # Non-behaving sig
+#     sig1_hill=sig.hilbert(y1)
+#     sig2_hill=sig.hilbert(y2)
+#     pdt=(np.inner(sig1_hill,np.conj(sig2_hill))/(np.sqrt(np.inner(sig1_hill,
+#                np.conj(sig1_hill))*np.inner(sig2_hill,np.conj(sig2_hill)))))
+#     phase = np.angle(pdt)
+
+#     return phase
+
+
 # %% Model
 
 def makemodel(S1,batch_size,epoch,train_p, val_p, test_p): 
-    
-    def makedata(S1):
-        # Find max size of all classes to allow proper preallocation
+    def plvfcn(eegData):
+        numElectrodes = eegData.shape[1]
+        numTimeSteps = eegData.shape[0]
+
+        # Initialize the PLV matrix
+        plvMatrix = np.zeros((numElectrodes, numElectrodes))
+
+        # Calculate PLV matrix for all electrode pairs
+        for electrode1 in range(numElectrodes):
+            for electrode2 in range(electrode1 + 1, numElectrodes):
+                # Calculate the instantaneous phase of the signals
+                phase1 = np.angle(sig.hilbert(eegData[:, electrode1]))
+                phase2 = np.angle(sig.hilbert(eegData[:, electrode2]))
+
+                # Calculate the phase difference between the two signals
+                phase_difference = phase2 - phase1
+
+                # Calculate the Phase-Locking Value (PLV)
+                plv = np.abs(np.sum(np.exp(1j * phase_difference)) / numTimeSteps)
+
+                # Store the PLV value in the matrix (both upper and lower triangular)
+                plvMatrix[electrode1, electrode2] = plv
+                plvMatrix[electrode2, electrode1] = plv
+
+        return plvMatrix
+
+    def compute_plv(subject_data):
+        S1 = subject_data
         idx = ['L', 'R', 'Re']
-         
-        dtype = [('L', np.float32), ('R', np.float32), ('Re', np.float32)]
-        
-        msize = [0,0,0]
-        
+        plv = {field: np.zeros((22, 22, 160)) for field in idx}
+
         for i in range(np.size(S1, 1) - 1):
             for j, field in enumerate(idx):
-                if msize[j] < np.size(S1[field][0, i], 0):
-                    msize[j] = np.size(S1[field][0, i], 0)
-    
-        # Create an empty structured array with the defined data type
-        img = np.zeros((22, np.max(msize), np.size(S1, 1)), dtype=dtype)  
-        
-        # S1 now has a full band of X examples for each class (L, R, Re)
-        for i in range(np.size(S1, 1)-1):
-            for j, field in enumerate(idx):
-                x = np.transpose(S1[field][0, i])
-                img[field][:,:np.size(x,1),i] += x
+                x = S1[field][0, i]
+                plv[field][:, :, i] = plvfcn(x)
                 
-        
-        l = img['L'][:,:,:]
-        r = img['R'][:,:,:]
-        re = img['Re'][:,:,:]
-    
+        l = plv['L'][:,:,:]
+        r = plv['R'][:,:,:]
+        re = plv['Re'][:,:,:]
+
         yl = np.zeros([1,np.size(S1,1)])
         yr = np.ones([1,np.size(S1,1)])
         yre = np.ones([1,np.size(S1,1)])*2
-    
+
         img = np.concatenate((l,r,re),2)
         y = np.concatenate((yl,yr,yre),1)
         y = y.reshape(-1, 1)
         encoder = OneHotEncoder(sparse=False)
         y = encoder.fit_transform(y)
+        
         return img,y
-    
-    # I have had to prepad the third dimension with zeros as not all classes or instances are the same time length. Therefore many images will show some no activity areas. 
-    S1,y = makedata(S1)
-    
+
+    plv,y = compute_plv(subject_data['S1'][:,:])
+
     # Data Augmentation (To be added)
     
     # Data Splitting
@@ -129,7 +169,7 @@ def makemodel(S1,batch_size,epoch,train_p, val_p, test_p):
     
         return train_S1, train_y, val_S1, val_y, test_S1, test_y
     
-    train_S1, train_y, val_S1, val_y, test_S1, test_y = split(S1, y, 0.3, 0.2, 0.5)
+    train_S1, train_y, val_S1, val_y, test_S1, test_y = split(plv, y, 0.3, 0.2, 0.5)
     del S1, y  # Assuming S1 and y are defined earlier
     
     # Data Loader 
@@ -162,7 +202,7 @@ def makemodel(S1,batch_size,epoch,train_p, val_p, test_p):
         verbose = 1  # Verbosity
         seed = 42  # Random seed
         preset = "efficientnetv2_b2_imagenet"  # Name of pretrained classifier
-        image_size = [22, 2567]  # Input image size
+        image_size = [22, 22]  # Input image size
         epochs = 10 # Training epochs
         batch_size = 1  # Batch size
         lr_mode = "cos" # LR scheduler mode from one of "cos", "step", "exp"
@@ -177,7 +217,7 @@ def makemodel(S1,batch_size,epoch,train_p, val_p, test_p):
     LOSS = keras.losses.KLDivergence()
         
     model = keras_cv.models.ImageClassifier.from_preset(
-        CFG.preset, num_classes=CFG.num_classes,input_shape=(22,2567,3)
+        CFG.preset, num_classes=CFG.num_classes,input_shape=(22,22,3)
     )
     
     # Compile the model  
@@ -305,19 +345,19 @@ def makemodel(S1,batch_size,epoch,train_p, val_p, test_p):
 # accuracies, model = makemodel(subject_data['S2'][:,:],1,20,0.3,0.2,0.5)
 
 # %%  Define the subject numbers
-subject_numbers = [1, 2, 5, 9, 21, 31, 34, 39] # 1, 2, 5, 9, 21, 31, 34, 39
+subject_numbers = [] # 1, 2, 5, 9, 21, 31, 34, 39
 # Loop through each subject number
 for subject_number in subject_numbers:
     # Call the makemodel function to create the model
     model, accuracies = makemodel(subject_data[f'S{subject_number}'][:,:], 1, 10, 0.3, 0.2, 0.5)
     
-# 39 - [0.66222222 0.63111111 0.96      ]
-# 34 - [0.68444444 0.65333333 0.91555556]
-# 31 - [0.64583333 0.62083333 0.96666667]
-# 21 - [0.64583333 0.67083333 0.96666667]
-# 9 - [0.62605042 0.39915966 0.        ]
-# 5 - [0.61344538 0.31932773 0.        ]
-# 2 - [0.6744186  0.67054264 0.98062016]
-# 1 - [0.67083333 0.3125     0.        ]
+# 39 - [0.51666667 0.6        0.58333333]
+# 34 - [0.5875     0.50416667 0.48333333]
+# 31 - 
+# 21 - 
+# 9 - 
+# 5 - 
+# 2 - 
+# 1 - [0.5375     0.56666667 0.4625    ]
 
     
