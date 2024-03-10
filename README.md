@@ -31,8 +31,16 @@ Model To do list:
 # 3) RNN - LSTM
 # 4) LSTM + CNN (Simultaneous processing of frequency and raw data)
 # 5) Using PLV as images for CNN (Start with All Freq, then just Mu and Beta)
-# 6) Graph Neural Network
-
+# 6) Graph Neural Network - PLV with Raw EEG, and Power of each band as features per node. Graph Classification Task
+| Subject | Accuracies (Train/Test)          |<br>
+|    1    | 0.8375 0.65                      |<br>
+|    2    | 0.9264 0.7132                    |<br>
+|    3    | 0.7679 0.6708                    |<br>
+|    4    | 0.7426 0.6458                    |<br>
+|    5    | 0.7208 0.6375                    |<br>
+|    6    | 0.6833 0.5792                    |<br>
+|    7    | 0.9156 0.6089                    |<br>
+|    8    | 0.8311 0.6133                    |<br>
 
 
 
