@@ -43,6 +43,42 @@ Model To do list:
 |    7    | 0.9156 0.6089                    |<br>
 |    8    | 0.8311 0.6133                    |<br>
 
+# 7) Graph Attention Network - PLV with Raw EEG, and Power of each band as features per node. Graph Classification Task
+10/10/80 Train/Validation/Test Split
+| Subject | Accuracies (Train/Test)          |<br>
+|    1    |                     |<br>
+|    2    |                     |<br>
+|    3    |                     |<br>
+|    4    |                     |<br>
+|    5    |                     |<br>
+|    6    |                     |<br>
+|    7    |                     |<br>
+|    8    |                     |<br>
+
+# 8) Graph Attention Network - Same as above but Testing data updates the parameters at each test sample. 
+10/10/80 Train/Validation/Test Split
+| Subject | Accuracies (Train/Test)          |<br>
+|    1    |                     |<br>
+|    2    |                     |<br>
+|    3    |                     |<br>
+|    4    |                     |<br>
+|    5    |                     |<br>
+|    6    |                     |<br>
+|    7    |                     |<br>
+|    8    |                     |<br>
+
+# 9) Graph Attention Network - Using CSP with GAT
+10/10/80 Train/Validation/Test Split
+| Subject | Accuracies (Train/Test)          |<br>
+|    1    |                     |<br>
+|    2    |                     |<br>
+|    3    |                     |<br>
+|    4    |                     |<br>
+|    5    |                     |<br>
+|    6    |                     |<br>
+|    7    |                     |<br>
+|    8    |                     |<br>
+
 
 
 
